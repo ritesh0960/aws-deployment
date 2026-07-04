@@ -10,8 +10,8 @@ on:
 env:
   AWS_REGION: ap-south-2
   ECR_REPOSITORY: my-app
-  ECR_CLUSTER: my-second-cluster
-  ECR_SERVICE: my-springboot-task-definition-service-gr448ja2
+  ECS_CLUSTER: my-second-cluster
+  ECS_SERVICE: my-springboot-task-definition-service-gr448ja2
   ECS_TASK_DEFINITION: .aws/task-definition.json
   CONTAINER_NAME: springboot-example
 
