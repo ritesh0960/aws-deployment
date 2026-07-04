@@ -1,35 +1,56 @@
-name: Deploy to AWS
+name: Deploy to Amazon ECS
+
+#perform action on code push on main branch
 on:
   push:
     branches:
-      - [ main ]
+      - main
+
+#configuring env variables
+env:
+  AWS_REGION: ap-south-2
+  ECR_REPOSITORY: my-app
+  ECR_CLUSTER: my-second-cluster
+  ECR_SERVICE: my-ecs-service
+  ECS_TASK_DEFINITION: .aws/task-definition.json
+  CONTAINER_NAME: app
 
 jobs:
   build-and-deploy:
-    runs-on: [ ubuntu-latest ]
+    runs-on: ubuntu-latest
     steps:
+      #checkout the main branch
       - name: Checkout Source
         uses: actions/checkout@v3
 
+      # install java to
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: maven
+
+      # Build the project
       - name: Build Project
         run: mvn clean install -DskipTests
+
+      # Setting up the aws credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: 'ap-south-2'
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Login to ECR
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
         with:
           mask-password: 'true'
 
+      #This step builds your Docker image, tags it with your Git commit SHA, pushes it to Amazon ECR, and makes the image URI available to later steps.
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
@@ -43,18 +64,20 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo image="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
+      #This step does not deploy anything. It creates a new ECS task definition by taking your existing task definition and replacing the container image with the one you just pushed to ECR.
       - name: Fill in the new Image Id in the Amazon ECS task definition
         id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition.json
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: my-springboot-task-definition.json
-          container-name: springboot-example
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ${{ env.CONTAINED_NAME }}
           image: ${{ steps.build-image.outputs.image }}
 
+      # deploying the image to ECS container
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: springboot-example-service
-          cluster: my-second-cluster
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
