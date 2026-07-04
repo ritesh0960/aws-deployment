@@ -12,7 +12,7 @@ env:
   ECR_REPOSITORY: my-app
   ECR_CLUSTER: my-second-cluster
   ECR_SERVICE: my-ecs-service
-  ECS_TASK_DEFINITION: .aws/my-springboot-my-springboot-task-definition.json
+  ECS_TASK_DEFINITION: .aws/task-definition.json
   CONTAINER_NAME: app
 
 jobs:
